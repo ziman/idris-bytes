@@ -5,13 +5,17 @@
 
 typedef int bool_t;
 
-// TODO: alignment of BufferInfo!
+/// Desired alignment of the BufferInfo structure.
+#define INFO_ALIGNMENT sizeof(char *)
 
+/// Information about an allocated chunk, which is typically
+/// referenced by multiple slices pointing into it.
 struct BufferInfo {
+
 	/// The start of the allocated chunk of memory.
 	char * memory;
 
-	/** TODO: this should be synchronised
+	/** TODO: this should be synchronised if we go concurrent
 	 *
 	 * This is a hack that allows us to cons bytes to slices
 	 * by mutating the underlying buffer instead of copying,
@@ -23,24 +27,31 @@ struct BufferInfo {
 	 * Hence, if you are extending a slice and
 	 *   dirt == slice->start
 	 * you can choose to extend your slice and update dirt
-	 * so that other slices have to copy the whole buffer.
+	 * so that other slices know to copy the whole buffer on update.
 	 */
 	char * dirt;
 };
 
+/// A slice of an underlying buffer.
 struct Slice {
+
+	/// The first useful byte.
 	char * start;
+
+	/// The first byte past the end.
 	char * end;
 };
 
-#define INFO(bytes) ((struct BufferInfo *) ((bytes)->end))
+/// Get the buffer info.
+#define INFO(slice) ((struct BufferInfo *) ((slice)->end))
 
-inline bool_t has_space(const struct Slice * const slice, const int bytes)
+/// Check if there's enough space to grow by nbytes.
+inline bool_t enough_space(const struct Slice * const slice, const int bytes)
 {
 	return INFO(slice)->memory + bytes <= slice->start;
 }
 
-
+/// Allocate an empty slice with the given capacity.
 struct Slice * bytes_alloc(size_t capacity)
 {
 	char * memory = (char *) malloc(capacity + sizeof(struct BufferInfo));
@@ -64,6 +75,14 @@ struct Slice * bytes_alloc(size_t capacity)
 	return slice;
 }
 
+/**
+ * Copy a slice, expanding its capacity capacity_factor-times.
+ *
+ * capacity_factor = 1  --  simple copy
+ * capacity_factor = 2  --  double the capacity
+ *
+ * Please don't use capacity_factor = 0.
+ */
 struct Slice * bytes_copy(struct Slice * slice, size_t capacity_factor)
 {
 	const size_t old_capacity = slice->end - INFO(slice)->memory;
@@ -83,17 +102,13 @@ struct Slice * bytes_copy(struct Slice * slice, size_t capacity_factor)
 	return new_slice;
 }
 
-void bytes_free(struct Slice * slice)
-{
-	if (!slice) return;
-	free(INFO(slice)->memory);
-}
-
+/// Prepend nbytes undefined bytes, reallocating the slice if needed.
+/// This function prepares the space, you overwrite the newly added bytes.
 struct Slice * bytes_bump(size_t nbytes, struct Slice * slice)
 {
 	struct BufferInfo * info = INFO(slice);
 
-	while (!has_space(slice, nbytes))
+	while (!enough_space(slice, nbytes))
 	{
 		// not enough space -- grow the buffer
 		slice = bytes_copy(slice, 2);
@@ -102,14 +117,18 @@ struct Slice * bytes_bump(size_t nbytes, struct Slice * slice)
 
 	if (info->dirt != slice->start)
 	{
-		// enough space but someone has already
-		// grown into the empty space
+		// enough space but some other slice has already
+		// grown into the available capacity
 		slice = bytes_copy(slice, 1);
 		if (!slice) return NULL;
 	}
 
-	// now the slice is completely ours
-	// and we know that (start == dirt).
+	// now we have
+	// - enough available capacity
+	// - not taken by any other slice
+	// (and we know that start == dirt)
+	//
+	// => we can grow the slice
 
 	slice->start -= nbytes;
 	INFO(slice)->dirt = slice->start;

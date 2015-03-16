@@ -19,10 +19,6 @@ private
 alloc : Int -> IO Bytes
 alloc capacity = B <$> foreign FFI_C "bytes_alloc" (Int -> IO Ptr) capacity
 
-private
-free : Bytes -> IO ()
-free (B ptr) = foreign FFI_C "bytes_free" (Ptr -> IO ()) ptr
-
 initialCapacity : Int
 initialCapacity = 4096
 
