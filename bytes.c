@@ -1,11 +1,13 @@
 #include "bytes.h"
 
-Slice * bytes_alloc(size_t capacity)
+#include <stdlib.h>
+
+struct Slice * bytes_alloc(size_t capacity)
 {
-	char * memory = (char *) malloc(capacity + sizeof(BufferInfo));
+	char * memory = (char *) malloc(capacity + sizeof(struct BufferInfo));
 	if (!memory) return NULL;
 
-	Slice * slice = (Slice *) malloc(sizeof(Slice));
+	struct Slice * slice = (struct Slice *) malloc(sizeof(struct Slice));
 	if (!slice)
 	{
 		free(memory);
@@ -18,7 +20,7 @@ Slice * bytes_alloc(size_t capacity)
 	return slice;
 }
 
-void bytes_free(Slice * slice)
+void bytes_free(struct Slice * slice)
 {
 	if (slice)
 	{
