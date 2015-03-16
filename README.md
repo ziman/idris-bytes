@@ -2,11 +2,13 @@
 
 A FFI-based implementation of byte buffers for Idris.
 
+* This is a cons-based structure (designed to grow to the left)
+  and copying is avoided wherever possible --
+  conses and prepends will not copy the RHS argument unless necessary.
+  Instead, data is destructively written into pre-allocated spare space.
+
 * Reading is designed to be very fast and straightforward.
   Mutation requires accessing the bookkeeping structure and possibly reallocation.
-
-* Copying is avoided wherever possible. Repeated conses are O(1) amortized.
-  Appends will not copy the right argument unless necessary.
 
 This will hopefully become the binary backend for
 [https://github.com/ziman/text](idris-text).
