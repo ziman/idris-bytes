@@ -46,12 +46,12 @@ struct Slice {
 #define INFO(slice) ((struct BufferInfo *) ((slice)->end))
 
 /// Check if there's enough space to grow by nbytes.
-inline bool_t enough_space(const struct Slice * const slice, const int bytes)
+inline bool_t enough_space(const Slice * const slice, const int bytes)
 {
 	return INFO(slice)->memory + bytes <= slice->start;
 }
 
-struct Slice * bytes_alloc(size_t capacity)
+Slice * bytes_alloc(size_t capacity)
 {
 	// Make sure BufferInfo will be aligned
 	if (capacity % INFO_ALIGNMENT != 0)
@@ -62,7 +62,7 @@ struct Slice * bytes_alloc(size_t capacity)
 	char * memory = (char *) malloc(capacity + sizeof(struct BufferInfo));
 	if (!memory) return NULL;
 
-	struct Slice * slice = (struct Slice *) malloc(sizeof(struct Slice));
+	Slice * slice = (Slice *) malloc(sizeof(Slice));
 	if (!slice)
 	{
 		free(memory);
@@ -88,28 +88,28 @@ struct Slice * bytes_alloc(size_t capacity)
  *
  * Please don't use capacity_factor = 0.
  */
-struct Slice * bytes_copy(struct Slice * slice, size_t capacity_factor)
+Slice * bytes_copy(Slice * slice, size_t capacity_factor)
 {
 	const size_t old_capacity = slice->end - INFO(slice)->memory;
 
 	// allocate a new slice
-	struct Slice * new_slice = bytes_alloc(capacity_factor * old_capacity);
-	if (!new_slice) return NULL;
+	Slice * result = bytes_alloc(capacity_factor * old_capacity);
+	if (!result) return NULL;
 
 	// copy the data
 	const size_t length = slice->end - slice->start;
-	new_slice->start = new_slice->end - length;
-	memcpy(new_slice->start, slice->start, length);
+	result->start = result->end - length;
+	memcpy(result->start, slice->start, length);
 
 	// fix the info
-	INFO(new_slice)->dirt = new_slice->start;
+	INFO(result)->dirt = result->start;
 
-	return new_slice;
+	return result;
 }
 
 /// Prepend nbytes undefined bytes, reallocating the slice if needed.
 /// This function prepares the space, you overwrite the newly added bytes.
-struct Slice * bytes_bump(size_t nbytes, struct Slice * slice)
+Slice * bytes_bump(size_t nbytes, Slice * slice)
 {
 	struct BufferInfo * info = INFO(slice);
 
@@ -141,34 +141,43 @@ struct Slice * bytes_bump(size_t nbytes, struct Slice * slice)
 	return slice;
 }
 
-struct Slice * bytes_cons(int byte, struct Slice * slice)
+Slice * bytes_cons(int byte, Slice * slice)
 {
-	struct Slice * const new_slice = bytes_bump(1, slice);
-	if (!new_slice) return NULL;
+	Slice * const result = bytes_bump(1, slice);
+	if (!result) return NULL;
 
-	*new_slice->start = (char) (byte & 0xFF);
+	*result->start = (char) (byte & 0xFF);
 
-	return new_slice;
+	return result;
 }
 
-int bytes_is_empty(struct Slice * slice)
+size_t bytes_length(Slice * slice)
 {
-	return slice->start == slice->end;
+	return slice->end - slice->start;
 }
 
-int bytes_head(struct Slice * slice)
+int bytes_head(Slice * slice)
 {
 	return (int) slice->start[0];
 }
 
-struct Slice * bytes_drop(size_t nbytes, struct Slice * slice)
+Slice * bytes_drop(size_t nbytes, Slice * slice)
 {
-	struct Slice * new_slice = (struct Slice *) malloc(sizeof(struct Slice));
-	if (!new_slice) return NULL;
+	Slice * result = (Slice *) malloc(sizeof(Slice));
+	if (!result) return NULL;
 
-	new_slice->start = slice->start + nbytes;
-	new_slice->end   = slice->end;
+	result->start = slice->start + nbytes;
+	result->end   = slice->end;
 	// note that the BufferInfo (esp. dirt) remains unchanged
 	
-	return new_slice;
+	return result;
+}
+
+Slice * bytes_concat(Slice * left, Slice * right)
+{
+	size_t nbytes = bytes_length(left);
+	Slice * result = bytes_bump(nbytes, right);
+	memcpy(result->start, left->start, nbytes);
+
+	return result;
 }

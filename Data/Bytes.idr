@@ -43,8 +43,8 @@ data ConsView : Bytes -> Type where
 abstract
 consView : (bs : Bytes) -> ConsView bs
 consView (B ptr) = unsafePerformIO $ do
-  empty <- foreign FFI_C "bytes_is_empty" (Ptr -> IO Int) ptr
-  if empty == 1 then
+  len <- foreign FFI_C "bytes_length" (Ptr -> IO Int) ptr
+  if len == 0 then
     return . believe_me $ Data.Bytes.Nil
   else do
     hd <- foreign FFI_C "bytes_head" (Ptr -> IO Int) ptr

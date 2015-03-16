@@ -5,20 +5,24 @@
 
 // All functions return NULL on error.
 
-struct Slice;
+typedef struct Slice Slice;
 
 /// Allocate an empty slice with the given capacity.
 /// May allocate slightly more to align internal structures.
-struct Slice * bytes_alloc(size_t capacity);
+Slice * bytes_alloc(size_t capacity);
 
-struct Slice * bytes_cons(int byte, struct Slice * slice);
+Slice * bytes_cons(int byte, Slice * slice);
 
-int            bytes_is_empty(struct Slice * slice);
-
-// Does not perform any checks.
-int            bytes_head(struct Slice * slice);
+// O(1).
+size_t bytes_length(Slice * slice);
 
 // Does not perform any checks.
-struct Slice * bytes_drop(size_t nbytes, struct Slice * slice);
+int bytes_head(Slice * slice);
+
+// Does not perform any checks.
+Slice * bytes_drop(size_t nbytes, Slice * slice);
+
+// Will grow the right slice if possible.
+Slice * bytes_concat(Slice * left, Slice * right);
 
 #endif
