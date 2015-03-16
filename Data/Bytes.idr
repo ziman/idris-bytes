@@ -21,7 +21,7 @@ allocate capacity = unsafePerformIO (
   )
 
 initialCapacity : Int
-initialCapacity = 4096
+initialCapacity = 4088  -- 1 page minus bookkeeping
 
 abstract
 empty : Bytes
