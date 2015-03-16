@@ -1,5 +1,6 @@
 module Data.Bytes
 
+%flag C "-O0 -g -ggdb"
 %link C "bytes.o"
 
 %access public
