@@ -134,16 +134,17 @@ int bytes_is_empty(struct Slice * slice)
 
 int bytes_head(struct Slice * slice)
 {
-	return (int) *slice->start;
+	return (int) slice->start[0];
 }
 
-struct Slice * bytes_uncons(size_t nbytes, struct Slice * slice)
+struct Slice * bytes_drop(size_t nbytes, struct Slice * slice)
 {
 	struct Slice * new_slice = (struct Slice *) malloc(sizeof(struct Slice));
 	if (!new_slice) return NULL;
 
-	new_slice->start += nbytes;
-	// note that the dirt remains where it is
+	new_slice->start = slice->start + nbytes;
+	new_slice->end   = slice->end;
+	// note that the BufferInfo (esp. dirt) remains unchanged
 	
 	return new_slice;
 }

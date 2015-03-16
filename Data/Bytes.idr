@@ -1,6 +1,7 @@
 module Data.Bytes
 
-%flag C "-O0 -g -ggdb"
+%flag C "-O0 -g3 -ggdb3"
+%include C "bytes.h"
 %link C "bytes.o"
 
 %access public
@@ -51,7 +52,7 @@ consView (B ptr) = unsafePerformIO $ do
     return . believe_me $ Data.Bytes.Nil
   else do
     hd <- foreign FFI_C "bytes_head" (Ptr -> IO Int) ptr
-    tl <- foreign FFI_C "bytes_uncons" (Int -> Ptr -> IO Ptr) 1 ptr
+    tl <- foreign FFI_C "bytes_drop" (Int -> Ptr -> IO Ptr) 1 ptr
     return . believe_me $ Data.Bytes.Cons hd (B tl)
 
 fromList : List Int -> Bytes

@@ -12,6 +12,6 @@ struct Slice * bytes_cons(int byte, struct Slice * slice);
 
 int            bytes_is_empty(struct Slice * slice);
 int            bytes_head(struct Slice * slice);
-struct Slice * bytes_uncons(size_t nbytes, struct Slice * slice);
+struct Slice * bytes_drop(size_t nbytes, struct Slice * slice);
 
 #endif
