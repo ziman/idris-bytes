@@ -7,7 +7,7 @@ A FFI-based implementation of byte buffers for Idris.
   conses and prepends will not copy the RHS argument unless necessary.
   Instead, data is destructively written into pre-allocated spare space.
 
-* Reading is designed to be very fast and straightforward.
+* Reading is designed to be fast and straightforward.
   Mutation requires accessing the bookkeeping structure and possibly reallocation.
 
 This will hopefully become the binary backend for
