@@ -86,3 +86,5 @@ toList bs with (consView bs)
 -- various instances, Eq, Ord, Show, Monoid
 -- migrate to (Bits 8)
 -- rename fromList/toList to pack/unpack
+--
+-- Bidirectional growth? (dirt_l, dirt_r)
