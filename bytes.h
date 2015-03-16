@@ -3,19 +3,11 @@
 
 #include <stddef.h>
 
-struct BufferInfo {
-	char * memory;
-	size_t capacity;
-};
-
-struct Slice {
-	char * start;
-	char * end;
-};
-
-#define INFO(bytes) ((struct BufferInfo *) ((bytes)->end))
+struct Slice;
 
 struct Slice * bytes_alloc(size_t capacity);
-void bytes_free(struct Slice * slice);
+void           bytes_free(struct Slice * slice);
+
+struct Slice * bytes_cons(int byte, struct Slice * slice);
 
 #endif
