@@ -1,3 +1,5 @@
+all: bytes.o
+
 main: Main.idr Data/Bytes.idr bytes.o
 	idris Main.idr -o main --warnreach
 
@@ -8,5 +10,5 @@ test: main
 	./main
 
 clean:
-	-rm -f main
+	-rm -f main *.o
 	find -name \*.ibc -delete

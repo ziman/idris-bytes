@@ -1,0 +1,5 @@
+package bytes
+
+modules = Data.Bytes
+makefile = Makefile
+objs = bytes.o
