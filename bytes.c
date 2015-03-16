@@ -51,9 +51,14 @@ inline bool_t enough_space(const struct Slice * const slice, const int bytes)
 	return INFO(slice)->memory + bytes <= slice->start;
 }
 
-/// Allocate an empty slice with the given capacity.
 struct Slice * bytes_alloc(size_t capacity)
 {
+	// Make sure BufferInfo will be aligned
+	if (capacity % INFO_ALIGNMENT != 0)
+	{
+		capacity += INFO_ALIGNMENT - (capacity % INFO_ALIGNMENT);
+	}
+
 	char * memory = (char *) malloc(capacity + sizeof(struct BufferInfo));
 	if (!memory) return NULL;
 
