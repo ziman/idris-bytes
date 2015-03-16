@@ -2,11 +2,13 @@ module Main
 
 import Data.Bytes
 
-idBytes : Nat -> Bytes -> Bytes
-idBytes  Z    bs = bs
-idBytes (S n) bs = idBytes n bs 
-
 main : IO ()
 main = do
-  putStrLn "Hello world!"
-  print . Bytes.toList . idBytes 4 . Bytes.fromList $ [1, 2, 3, 4, 5]
+    putStrLn "Hello world!"
+    print . Bytes.toList $ xs ++ ys
+  where
+    xs : Bytes
+    xs = fromList [1, 2, 3]
+
+    ys : Bytes
+    ys = fromList [254, 255, 256, 257]

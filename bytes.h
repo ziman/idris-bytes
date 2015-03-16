@@ -11,18 +11,18 @@ typedef struct Slice Slice;
 /// May allocate slightly more to align internal structures.
 Slice * bytes_alloc(size_t capacity);
 
-Slice * bytes_cons(int byte, Slice * slice);
+Slice * bytes_cons(unsigned byte, Slice * slice);
 
 // O(1).
 size_t bytes_length(Slice * slice);
 
 // Does not perform any checks.
-int bytes_head(Slice * slice);
+unsigned bytes_head(Slice * slice);
 
 // Does not perform any checks.
 Slice * bytes_drop(size_t nbytes, Slice * slice);
 
-// Will grow the right slice if possible.
+// Will not copy the right slice unless necessary.
 Slice * bytes_concat(Slice * left, Slice * right);
 
 #endif

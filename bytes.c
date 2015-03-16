@@ -1,19 +1,20 @@
 #include "bytes.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 typedef int bool_t;
 
 /// Desired alignment of the BufferInfo structure.
-#define INFO_ALIGNMENT sizeof(char *)
+#define INFO_ALIGNMENT sizeof(uint8_t *)
 
 /// Information about an allocated chunk, which is typically
 /// referenced by multiple slices pointing into it.
 struct BufferInfo {
 
 	/// The start of the allocated chunk of memory.
-	char * memory;
+	uint8_t * memory;
 
 	/** TODO: this should be synchronised if we go concurrent
 	 *
@@ -29,17 +30,17 @@ struct BufferInfo {
 	 * you can choose to extend your slice and update dirt
 	 * so that other slices know to copy the whole buffer on update.
 	 */
-	char * dirt;
+	uint8_t * dirt;
 };
 
 /// A slice of an underlying buffer.
 struct Slice {
 
 	/// The first useful byte.
-	char * start;
+	uint8_t * start;
 
 	/// The first byte past the end.
-	char * end;
+	uint8_t * end;
 };
 
 /// Get the buffer info.
@@ -59,7 +60,7 @@ Slice * bytes_alloc(size_t capacity)
 		capacity += INFO_ALIGNMENT - (capacity % INFO_ALIGNMENT);
 	}
 
-	char * memory = (char *) malloc(capacity + sizeof(struct BufferInfo));
+	uint8_t * memory = (uint8_t *) malloc(capacity + sizeof(struct BufferInfo));
 	if (!memory) return NULL;
 
 	Slice * slice = (Slice *) malloc(sizeof(Slice));
@@ -69,7 +70,7 @@ Slice * bytes_alloc(size_t capacity)
 		return NULL;
 	}
 
-	char * const end = memory + capacity;
+	uint8_t * const end = memory + capacity;
 	slice->start = end;
 	slice->end = end;
 
@@ -141,12 +142,12 @@ Slice * bytes_bump(size_t nbytes, Slice * slice)
 	return slice;
 }
 
-Slice * bytes_cons(int byte, Slice * slice)
+Slice * bytes_cons(unsigned byte, Slice * slice)
 {
 	Slice * const result = bytes_bump(1, slice);
 	if (!result) return NULL;
 
-	*result->start = (char) (byte & 0xFF);
+	*result->start = (uint8_t) ((unsigned) byte & 0xFF);
 
 	return result;
 }
@@ -156,7 +157,7 @@ size_t bytes_length(Slice * slice)
 	return slice->end - slice->start;
 }
 
-int bytes_head(Slice * slice)
+unsigned bytes_head(Slice * slice)
 {
 	return (int) slice->start[0];
 }

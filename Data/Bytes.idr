@@ -51,6 +51,13 @@ consView (B ptr) = unsafePerformIO $ do
     tl <- foreign FFI_C "bytes_drop" (Int -> Ptr -> IO Ptr) 1 ptr
     return . believe_me $ Data.Bytes.Cons hd (B tl)
 
+infixr 7 ++
+abstract
+(++) : Bytes -> Bytes -> Bytes
+(++) (B xs) (B ys) = unsafePerformIO (
+  B <$> foreign FFI_C "bytes_concat" (Ptr -> Ptr -> IO Ptr) xs ys
+)
+
 fromList : List Int -> Bytes
 fromList []        = empty
 fromList (x :: xs) = cons x $ fromList xs
