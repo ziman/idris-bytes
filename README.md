@@ -11,7 +11,7 @@ A FFI-based implementation of byte buffers for Idris.
   Mutation requires accessing the bookkeeping structure and possibly reallocation.
 
 This will hopefully become the binary backend for
-[https://github.com/ziman/text](idris-text).
+[idris-text](https://github.com/ziman/text).
 
 ## Installation
 
