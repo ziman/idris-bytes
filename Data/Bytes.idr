@@ -1,6 +1,5 @@
 module Data.Bytes
 
-%flag C "-O0 -g3 -ggdb3"
 %include C "bytes.h"
 %link C "bytes.o"
 
