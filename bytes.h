@@ -20,6 +20,9 @@ size_t bytes_length(Slice * slice);
 unsigned bytes_head(Slice * slice);
 
 // Does not perform any checks.
+Slice * bytes_take(size_t nbytes, Slice * slice);
+
+// Does not perform any checks.
 Slice * bytes_drop(size_t nbytes, Slice * slice);
 
 // Will not copy the right slice unless necessary.

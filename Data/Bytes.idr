@@ -15,16 +15,18 @@ record Bytes : Type where
   B : Ptr -> Bytes
 
 -- TODO: check for NULL and report errors
-private
-alloc : Int -> IO Bytes
-alloc capacity = B <$> foreign FFI_C "bytes_alloc" (Int -> IO Ptr) capacity
+abstract
+allocate : Int -> Bytes
+allocate capacity = unsafePerformIO (
+    B <$> foreign FFI_C "bytes_alloc" (Int -> IO Ptr) capacity
+  )
 
 initialCapacity : Int
 initialCapacity = 4096
 
 abstract
 empty : Bytes
-empty = unsafePerformIO $ alloc initialCapacity
+empty = allocate initialCapacity
 
 %freeze empty
 
@@ -57,6 +59,16 @@ abstract
 (++) (B xs) (B ys) = unsafePerformIO (
   B <$> foreign FFI_C "bytes_concat" (Ptr -> Ptr -> IO Ptr) xs ys
 )
+
+drop : Int -> Bytes -> Bytes
+drop n (B ptr) = unsafePerformIO (
+    B <$> foreign FFI_C "bytes_drop" (Int -> Ptr -> IO Ptr) n ptr
+  )
+
+take : Int -> Bytes -> Bytes
+take n (B ptr) = unsafePerformIO (
+    B <$> foreign FFI_C "bytes_take" (Int -> Ptr -> IO Ptr) n ptr
+  )
 
 fromList : List Int -> Bytes
 fromList []        = empty

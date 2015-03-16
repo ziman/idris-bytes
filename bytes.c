@@ -162,6 +162,16 @@ unsigned bytes_head(Slice * slice)
 	return (int) slice->start[0];
 }
 
+Slice * bytes_take(size_t nbytes, Slice * slice)
+{
+	Slice * result = bytes_alloc(nbytes);
+	result = bytes_bump(nbytes, result);  // we know this won't reallocate
+
+	memcpy(result->start, slice->start, nbytes);
+
+	return result;
+}
+
 Slice * bytes_drop(size_t nbytes, Slice * slice)
 {
 	Slice * result = (Slice *) malloc(sizeof(Slice));
