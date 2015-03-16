@@ -147,7 +147,7 @@ Slice * bytes_cons(unsigned byte, Slice * slice)
 	Slice * const result = bytes_bump(1, slice);
 	if (!result) return NULL;
 
-	*result->start = (uint8_t) ((unsigned) byte & 0xFF);
+	*result->start = (uint8_t) (byte & 0xFF);
 
 	return result;
 }
@@ -159,14 +159,14 @@ size_t bytes_length(Slice * slice)
 
 unsigned bytes_head(Slice * slice)
 {
-	return (int) slice->start[0];
+	return slice->start[0];
 }
 
 Slice * bytes_take(size_t nbytes, Slice * slice)
 {
 	Slice * result = bytes_alloc(nbytes);
-	result = bytes_bump(nbytes, result);  // we know this won't reallocate
 
+	result->start = result->end - nbytes;
 	memcpy(result->start, slice->start, nbytes);
 
 	return result;
