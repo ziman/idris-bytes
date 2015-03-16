@@ -119,8 +119,31 @@ struct Slice * bytes_bump(size_t nbytes, struct Slice * slice)
 
 struct Slice * bytes_cons(int byte, struct Slice * slice)
 {
-	slice = bytes_bump(1, slice);
-	if (!slice) return NULL;
+	struct Slice * const new_slice = bytes_bump(1, slice);
+	if (!new_slice) return NULL;
 
-	*slice->start = (char) (byte & 0xFF);
+	*new_slice->start = (char) (byte & 0xFF);
+
+	return new_slice;
+}
+
+int bytes_is_empty(struct Slice * slice)
+{
+	return slice->start == slice->end;
+}
+
+int bytes_head(struct Slice * slice)
+{
+	return (int) *slice->start;
+}
+
+struct Slice * bytes_uncons(size_t nbytes, struct Slice * slice)
+{
+	struct Slice * new_slice = (struct Slice *) malloc(sizeof(struct Slice));
+	if (!new_slice) return NULL;
+
+	new_slice->start += nbytes;
+	// note that the dirt remains where it is
+	
+	return new_slice;
 }
