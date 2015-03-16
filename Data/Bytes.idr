@@ -77,3 +77,12 @@ toList : Bytes -> List Int
 toList bs with (consView bs)
   toList  _          | Nil       = []
   toList (cons x xs) | Cons x xs = x :: toList (assert_smaller (cons x xs) xs)
+
+-- todo:
+--
+-- lengthOfSpan
+-- span, break
+-- foldr, foldl
+-- various instances, Eq, Ord, Show, Monoid
+-- migrate to (Bits 8)
+-- rename fromList/toList to pack/unpack
