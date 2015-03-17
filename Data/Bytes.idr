@@ -206,8 +206,11 @@ instance Ord Bytes where
       x : Int
       x = Bytes.cmp xs ys
 
+toString : Bytes -> String
+toString = foldr (strCons . chr . toInt) ""
+
 instance Show Bytes where
-  show = ("b" ++) . show . foldr (strCons . chr . toInt) ""
+  show = ("b" ++) . show . toString
 
 instance Semigroup Bytes where
   (<+>) = (++)
