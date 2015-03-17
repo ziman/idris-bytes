@@ -13,6 +13,7 @@ main = do
     print . B.unpack $ multi 10 xs
     print $ (xs ++ ys) == B.pack [1,2,3,254,255,0,1]
     print $ B.pack [64, 65, 66, 67, 68, 69]
+    print $ spanLength (== 128) (pack [128,128,128,0])
   where
     xs : Bytes
     xs = pack [1, 2, 3]

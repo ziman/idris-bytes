@@ -154,9 +154,9 @@ iterateR f acc bs with (snocView bs)
     | Cont acc'   = iterateR f acc' (assert_smaller bs ys)
 
 iterateL : (a -> Byte -> Result a) -> a -> Bytes -> a
-iterateL f acc bs with (snocView bs)
+iterateL f acc bs with (consView bs)
   | Nil       = acc
-  | Snoc ys y with (f acc y)
+  | Cons y ys with (f acc y)
     | Stop result = result
     | Cont acc'   = iterateL f acc' (assert_smaller bs ys)
 
