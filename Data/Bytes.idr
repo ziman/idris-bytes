@@ -131,7 +131,9 @@ slice start end (B ptr) = unsafePerformIO (
     e' : Int
     e' = max s e
 
--- folds with early exit
+-- Folds with early exit.
+-- If Bytes were a Functor, this would be equivalent
+-- to a Traversable instance interpreted in the Either monad.
 data Result : Type -> Type where
   Stop : (result : a) -> Result a
   Cont : (acc : a) -> Result a
@@ -150,6 +152,16 @@ iterateL f acc bs with (snocView bs)
     | Stop result = result
     | Cont acc'   = iterateL f acc' (assert_smaller bs ys)
 
+infixl 3 .:
+(.:) : (a -> b) -> (c -> d -> a) -> (c -> d -> b)
+(.:) g f x y = g (f x y)
+
+foldr : (Byte -> a -> a) -> a -> Bytes -> a
+foldr f = iterateR (Cont .: f)
+
+foldl : (a -> Byte -> a) -> a -> Bytes -> a
+foldl f = iterateL (Cont .: f)
+
 spanLength : (Byte -> Bool) -> Bytes -> Int
 spanLength p = iterateL step 0
   where
@@ -158,11 +170,18 @@ spanLength p = iterateL step 0
       | True  = Cont (n + 1)
       | False = Stop  n
 
+splitAt : Int -> Bytes -> (Bytes, Bytes)
+splitAt n bs = (takePrefix n bs, dropPrefix n bs)
+
+span : (Byte -> Bool) -> Bytes -> (Bytes, Bytes)
+span p bs = splitAt (spanLength p bs) bs
+
+break : (Byte -> Bool) -> Bytes -> (Bytes, Bytes)
+break p bs = span (not . p) bs
+
 -- todo:
 --
--- spanLength
--- span, break
--- foldr, foldl
+-- make indices Nats
 -- various instances, Eq, Ord, Show, Monoid
 -- migrate to (Bits 8)
 -- rename fromList/toList to pack/unpack
