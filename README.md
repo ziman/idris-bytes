@@ -2,10 +2,12 @@
 
 A FFI-based implementation of byte buffers for Idris.
 
-* This is a cons-based structure (designed to grow to the left)
-  and copying is avoided wherever possible --
-  conses and prepends will not copy the RHS argument unless necessary.
-  Instead, data is destructively written into pre-allocated spare space.
+* This is a snoc-based structure (designed to grow to the right).
+
+* Copying is avoided wherever possible (copy-on-second-write) --
+  snocs and appends will not copy the LHS argument unless necessary.
+  Instead, data is destructively written into pre-allocated spare space,
+  as long as it is safe.
 
 * Reading is designed to be fast and straightforward.
   Mutation requires accessing the bookkeeping structure and possibly reallocation.
