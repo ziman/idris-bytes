@@ -196,7 +196,7 @@ Slice * bytes_append(Slice * left, Slice * right)
 
 	Slice * result = bytes_bump(rlen, left);
 
-	memcpy(result->start + llen, left->start, rlen);
+	memcpy(result->start + llen, right->start, rlen);
 
 	return result;
 }
