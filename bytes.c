@@ -6,77 +6,73 @@
 
 typedef int bool_t;
 
-/// Desired alignment of the BufferInfo structure.
-#define INFO_ALIGNMENT sizeof(uint8_t *)
-
 /// Information about an allocated chunk, which is typically
 /// referenced by multiple slices pointing into it.
-struct BufferInfo {
+typedef struct Buffer {
+	// TODO: comment this
+	uint8_t * dirt_l;
+	uint8_t * dirt_r;
 
-	/// The start of the allocated chunk of memory.
-	uint8_t * memory;
+	/// Pointer to the first invalid byte after the buffer.
+	uint8_t * end;
 
-	/** TODO: this should be synchronised if we go concurrent
-	 *
-	 * This is a hack that allows us to cons bytes to slices
-	 * by mutating the underlying buffer instead of copying,
-	 * as long as there is only one "line of extension".
-	 *
-	 * This field denotes the start of the earliest slice
-	 * that uses this buffer as its underlying storage.
-	 *
-	 * Hence, if you are extending a slice and
-	 *   dirt == slice->start
-	 * you can choose to extend your slice and update dirt
-	 * so that other slices know to copy the whole buffer on update.
-	 */
-	uint8_t * dirt;
-};
+	/// The allocated chunk of memory.
+	uint8_t start[];
+} Buffer;
 
 /// A slice of an underlying buffer.
-struct Slice {
+typedef struct Slice {
 
-	/// The first useful byte.
+	/// The first valid byte.
 	uint8_t * start;
 
 	/// The first byte past the end.
 	uint8_t * end;
-};
 
-/// Get the buffer info.
-#define INFO(slice) ((struct BufferInfo *) ((slice)->end))
+	/// Bookkeeping for the underlying allocated memory.
+	Buffer * buffer;
+} Slice;
 
-/// Check if there's enough space to grow by nbytes.
-inline bool_t enough_space(const Slice * const slice, const int bytes)
+/// Check if there's enough space to grow by nbytes to the left.
+static inline bool_t enough_space_l(const Slice * const slice, const size_t nbytes)
 {
-	return INFO(slice)->memory + bytes <= slice->start;
+	return (slice->start - slice->buffer->start) >= nbytes;
 }
 
-Slice * bytes_alloc(size_t capacity)
+/// Check if there's enough space to grow by nbytes to the right.
+static inline bool_t enough_space_r(const Slice * const slice, const size_t nbytes)
 {
-	// Make sure BufferInfo will be aligned
-	if (capacity % INFO_ALIGNMENT != 0)
-	{
-		capacity += INFO_ALIGNMENT - (capacity % INFO_ALIGNMENT);
-	}
+	return (slice->buffer->end - slice->end) >= nbytes;
+}
 
-	uint8_t * memory = (uint8_t *) malloc(capacity + sizeof(struct BufferInfo));
-	if (!memory) return NULL;
+Slice * bytes_alloc(size_t capacity, GrowthDirection alignment)
+{
+	Buffer * buffer = (Buffer *) malloc(sizeof(Buffer) + capacity);
+	if (!buffer) return NULL;
+
+	buffer->end = buffer->start + capacity;
 
 	Slice * slice = (Slice *) malloc(sizeof(Slice));
 	if (!slice)
 	{
-		free(memory);
+		free(buffer);
 		return NULL;
 	}
 
-	uint8_t * const end = memory + capacity;
-	slice->start = end;
-	slice->end = end;
+	switch (alignment)
+	{
+		case CONS:
+			slice->start = slice->end = buffer->end;
+			break;
+		
+		case SNOC:
+		default:
+			slice->start = slice->end = buffer->start;
+			break;
+	}
 
-	struct BufferInfo * info = INFO(slice);
-	info->memory = memory;
-	info->dirt = end;
+	buffer->dirt_l = slice->start;
+	buffer->dirt_r = slice->end;
 
 	return slice;
 }
@@ -84,14 +80,14 @@ Slice * bytes_alloc(size_t capacity)
 /**
  * Copy a slice, expanding its capacity capacity_factor-times.
  *
- * capacity_factor = 1  --  simple copy
- * capacity_factor = 2  --  double the capacity
+ *   capacity_factor = 1  --  simple copy
+ *   capacity_factor = 2  --  double the capacity
  *
  * Please don't use capacity_factor = 0.
  */
-Slice * bytes_copy(Slice * slice, size_t capacity_factor)
+static Slice * bytes_copy(Slice * slice, size_t capacity_factor, GrowthDirection dir)
 {
-	const size_t old_capacity = slice->end - INFO(slice)->memory;
+	const size_t old_capacity = slice->buffer->end - slice->buffer->start;
 
 	// allocate a new slice
 	Slice * result = bytes_alloc(capacity_factor * old_capacity);
