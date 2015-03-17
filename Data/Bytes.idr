@@ -20,21 +20,25 @@ abstract
 record Bytes : Type where
   B : Ptr -> Bytes
 
-initialCapacity : Int
+initialCapacity : Nat
 initialCapacity = 16
 
 -- TODO: check for NULL and report errors
 
 abstract
-allocate : Int -> Bytes
+allocate : Nat -> Bytes
 allocate capacity = unsafePerformIO (
-    B <$> foreign FFI_C "bytes_alloc" (Int -> IO Ptr) capacity
+    B <$> foreign FFI_C "bytes_alloc" (Int -> IO Ptr) (cast capacity)
   )
 
-abstract
-length : Bytes -> Int
-length (B ptr) = unsafePerformIO $
+private
+length_Int : Bytes -> Int
+length_Int (B ptr) = unsafePerformIO $
   foreign FFI_C "bytes_length" (Ptr -> IO Int) ptr
+
+abstract
+length : Bytes -> Nat
+length = cast . length_Int
 
 abstract
 empty : Bytes
@@ -93,19 +97,19 @@ abstract
   B <$> foreign FFI_C "bytes_append" (Ptr -> Ptr -> IO Ptr) xs ys
 )
 
-dropPrefix : Int -> Bytes -> Bytes
+dropPrefix : Nat -> Bytes -> Bytes
 dropPrefix n (B ptr) = unsafePerformIO (
-      B <$> foreign FFI_C "bytes_drop_prefix" (Int -> Ptr -> IO Ptr) (min n len) ptr
+      B <$> foreign FFI_C "bytes_drop_prefix" (Int -> Ptr -> IO Ptr) (min (cast n) len) ptr
     )
   where
-    len = length (B ptr)
+    len = length_Int (B ptr)
 
-takePrefix : Int -> Bytes -> Bytes
+takePrefix : Nat -> Bytes -> Bytes
 takePrefix n (B ptr) = unsafePerformIO (
-      B <$> foreign FFI_C "bytes_take_prefix" (Int -> Ptr -> IO Ptr) (min n len) ptr
+      B <$> foreign FFI_C "bytes_take_prefix" (Int -> Ptr -> IO Ptr) (min (cast n) len) ptr
     )
   where
-    len = length (B ptr)
+    len = length_Int (B ptr)
 
 pack : List Byte -> Bytes
 pack = fromList . reverse
@@ -119,17 +123,17 @@ unpack bs with (consView bs)
   | Nil       = []
   | Cons x xs = x :: unpack (assert_smaller bs xs)
 
-slice : Int -> Int -> Bytes -> Bytes
+slice : Nat -> Nat -> Bytes -> Bytes
 slice start end (B ptr) = unsafePerformIO (
       B <$> foreign FFI_C "bytes_slice" (Ptr -> Int -> Int -> IO Ptr) ptr s' e'
     )
   where
     n : Int
-    n = length (B ptr)
+    n = length_Int (B ptr)
     s : Int
-    s = (start `min` n) `max` 0
+    s = (cast start `min` n) `max` 0
     e : Int
-    e = (end   `min` n) `max` 0
+    e = (cast end   `min` n) `max` 0
     s' : Int
     s' = min s e
     e' : Int
@@ -166,15 +170,15 @@ foldr f = iterateR (Cont .: f)
 foldl : (a -> Byte -> a) -> a -> Bytes -> a
 foldl f = iterateL (Cont .: f)
 
-spanLength : (Byte -> Bool) -> Bytes -> Int
-spanLength p = iterateL step 0
+spanLength : (Byte -> Bool) -> Bytes -> Nat
+spanLength p = iterateL step Z
   where
-    step : Int -> Byte -> Result Int
+    step : Nat -> Byte -> Result Nat
     step n b with (p b)
-      | True  = Cont (n + 1)
-      | False = Stop  n
+      | True  = Cont (S n)
+      | False = Stop n
 
-splitAt : Int -> Bytes -> (Bytes, Bytes)
+splitAt : Nat -> Bytes -> (Bytes, Bytes)
 splitAt n bs = (takePrefix n bs, dropPrefix n bs)
 
 span : (Byte -> Bool) -> Bytes -> (Bytes, Bytes)
