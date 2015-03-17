@@ -204,3 +204,22 @@ Slice * bytes_append(Slice * left, Slice * right)
 
 	return result;
 }
+
+int bytes_compare(Slice * left, Slice * right)
+{
+	size_t rlen = left->end - left->start;
+	size_t llen = right->end - right->start;
+
+	size_t len = llen < rlen ? llen : rlen;
+
+	int result = memcmp(left->start, right->start, len);
+	if (result) return result;
+
+	if (llen < rlen)
+		return -1;
+
+	if (llen > rlen)
+		return 1;
+
+	return 0;
+}

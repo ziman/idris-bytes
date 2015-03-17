@@ -100,20 +100,17 @@ takePrefix n (B ptr) = unsafePerformIO (
   where
     len = length (B ptr)
 
-fromList' : List Int -> Bytes
-fromList' []        = empty
-fromList' (x :: xs) = snoc (fromList' xs) x
-
 fromList : List Int -> Bytes
 fromList = fromList' . reverse
-
-toList' : Bytes -> List Int
-toList' bs with (snocView bs)
-  | Nil       = []
-  | Snoc xs x = x :: toList' (assert_smaller bs xs)
+  where
+    fromList' : List Int -> Bytes
+    fromList' []        = empty
+    fromList' (x :: xs) = snoc (fromList' xs) x
 
 toList : Bytes -> List Int
-toList = reverse . toList'
+toList bs with (consView bs)
+  | Nil       = []
+  | Cons x xs = x :: toList (assert_smaller bs xs)
 
 slice : Int -> Int -> Bytes -> Bytes
 slice start end (B ptr) = unsafePerformIO (
@@ -179,11 +176,40 @@ span p bs = splitAt (spanLength p bs) bs
 break : (Byte -> Bool) -> Bytes -> (Bytes, Bytes)
 break p bs = span (not . p) bs
 
+private
+cmp : Bytes -> Bytes -> Int
+cmp (B xs) (B ys) = unsafePerformIO $
+  foreign FFI_C "bytes_compare" (Ptr -> Ptr -> IO Int) xs ys
+
+instance Eq Bytes where
+  xs == ys = (Bytes.cmp xs ys == 0)
+
+instance Ord Bytes where
+  compare xs ys =
+      if x < 0
+        then LT
+        else if x > 0
+          then GT
+          else EQ
+    where
+      x : Int
+      x = Bytes.cmp xs ys
+
+instance Show Bytes where
+  show = ("b" ++) . show . foldr (strCons . chr) ""
+
+instance Semigroup Bytes where
+  (<+>) = (++)
+
+instance Monoid Bytes where
+  neutral = empty
+
 -- todo:
 --
 -- make indices Nats
 -- various instances, Eq, Ord, Show, Monoid
--- migrate to (Bits 8)
+-- Build a ByteString on top of Bytes?
+-- migrate to (Bits 8)?
 -- rename fromList/toList to pack/unpack
 --
 -- Bidirectional growth? (dirt_l, dirt_r)

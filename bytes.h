@@ -39,4 +39,6 @@ Slice * bytes_drop_suffix(size_t nbytes, Slice * slice);
 // Will not copy the left argument unless necessary.
 Slice * bytes_append(Slice * left, Slice * right);
 
+int bytes_compare(Slice * left, Slice * right);
+
 #endif
