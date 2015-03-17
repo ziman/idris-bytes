@@ -25,6 +25,11 @@ allocate capacity = unsafePerformIO (
   )
 
 abstract
+length : Bytes -> Int
+length (B ptr) = unsafePerformIO $
+  foreign FFI_C "bytes_length" (Ptr -> IO Int) ptr
+
+abstract
 empty : Bytes
 empty = allocate initialCapacity
 
@@ -54,7 +59,7 @@ snocView (B ptr) = unsafePerformIO $ do
     return . believe_me $ Data.Bytes.Nil
   else do
     init <- foreign FFI_C "bytes_drop_suffix" (Int -> Ptr -> IO Ptr) 1 ptr
-    last <- foreign FFI_C "bytes_last" (Int -> Ptr -> IO Int) 1 ptr
+    last <- foreign FFI_C "bytes_last" (Ptr -> IO Int) ptr
     return . believe_me $ Data.Bytes.Snoc (B init) last
 
 infixr 7 ++
@@ -66,13 +71,17 @@ abstract
 
 dropPrefix : Int -> Bytes -> Bytes
 dropPrefix n (B ptr) = unsafePerformIO (
-    B <$> foreign FFI_C "bytes_drop_prefix" (Int -> Ptr -> IO Ptr) n ptr
-  )
+      B <$> foreign FFI_C "bytes_drop_prefix" (Int -> Ptr -> IO Ptr) (min n len) ptr
+    )
+  where
+    len = length (B ptr)
 
 takePrefix : Int -> Bytes -> Bytes
 takePrefix n (B ptr) = unsafePerformIO (
-    B <$> foreign FFI_C "bytes_take_prefix" (Int -> Ptr -> IO Ptr) n ptr
-  )
+      B <$> foreign FFI_C "bytes_take_prefix" (Int -> Ptr -> IO Ptr) (min n len) ptr
+    )
+  where
+    len = length (B ptr)
 
 fromList : List Int -> Bytes
 fromList []        = empty

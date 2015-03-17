@@ -22,7 +22,6 @@ size_t bytes_length(Slice * slice);
 
 /// Generic O(1) indexing. Does not perform any checks.
 unsigned bytes_at(Slice * slice, size_t index);
-unsigned bytes_head(Slice * slice);
 unsigned bytes_last(Slice * slice);
 
 /// Get a subslice corresponding to the half-open interval [start, end).

@@ -159,9 +159,9 @@ unsigned bytes_at(Slice * slice, size_t index)
 	return (unsigned) slice->start[index];
 }
 
-unsigned bytes_head(Slice * slice)
+unsigned bytes_last(Slice * slice)
 {
-	return (unsigned) slice->start[0];
+	return (unsigned) slice->end[-1];
 }
 
 Slice * bytes_slice(Slice * slice, size_t start, size_t end)
