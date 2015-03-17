@@ -209,6 +209,9 @@ instance Ord Bytes where
 toString : Bytes -> String
 toString = foldr (strCons . chr . toInt) ""
 
+fromString : String -> Bytes
+fromString = foldl (\bs, c => bs |> fromInt (ord c)) empty . unpack
+
 instance Show Bytes where
   show = ("b" ++) . show . toString
 
