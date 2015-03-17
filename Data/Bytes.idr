@@ -47,20 +47,37 @@ infixl 7 |>
 (|>) : Bytes -> Byte -> Bytes
 (|>) = snoc
 
-data SnocView : Bytes -> Type where
-  Nil  : SnocView empty
-  Snoc : (bs : Bytes) -> (b : Byte) -> SnocView (bs |> b)
+namespace SnocView
+  data SnocView : Type where
+    Nil : SnocView
+    Snoc : (bs : Bytes) -> (b : Byte) -> SnocView
 
-abstract
-snocView : (bs : Bytes) -> SnocView bs
-snocView (B ptr) = unsafePerformIO $ do
-  len <- foreign FFI_C "bytes_length" (Ptr -> IO Int) ptr
-  if len == 0 then
-    return . believe_me $ Data.Bytes.Nil
-  else do
-    init <- foreign FFI_C "bytes_drop_suffix" (Int -> Ptr -> IO Ptr) 1 ptr
-    last <- foreign FFI_C "bytes_last" (Ptr -> IO Int) ptr
-    return . believe_me $ Data.Bytes.Snoc (B init) last
+  abstract
+  snocView : Bytes -> SnocView
+  snocView (B ptr) = unsafePerformIO $ do
+    len <- foreign FFI_C "bytes_length" (Ptr -> IO Int) ptr
+    if len == 0 then
+      return $ SnocView.Nil
+    else do
+      init <- foreign FFI_C "bytes_drop_suffix" (Int -> Ptr -> IO Ptr) 1 ptr
+      last <- foreign FFI_C "bytes_last" (Ptr -> IO Int) ptr
+      return $ SnocView.Snoc (B init) last
+
+namespace ConsView
+  data ConsView : Type where
+    Nil : ConsView
+    Cons : (b : Byte) -> (bs : Bytes) -> ConsView
+
+  abstract
+  consView : Bytes -> ConsView
+  consView (B ptr) = unsafePerformIO $ do
+    len <- foreign FFI_C "bytes_length" (Ptr -> IO Int) ptr
+    if len == 0 then
+      return $ ConsView.Nil
+    else do
+      hd <- foreign FFI_C "bytes_head" (Ptr -> IO Int) ptr
+      tl <- foreign FFI_C "bytes_drop_prefix" (Int -> Ptr -> IO Ptr) 1 ptr
+      return $ ConsView.Cons hd (B tl)
 
 infixr 7 ++
 abstract
@@ -92,15 +109,47 @@ fromList = fromList' . reverse
 
 toList' : Bytes -> List Int
 toList' bs with (snocView bs)
-  toList'  _          | Nil       = []
-  toList' (snoc xs x) | Snoc xs x = x :: toList' (assert_smaller (snoc xs x) xs)
+  | Nil       = []
+  | Snoc xs x = x :: toList' (assert_smaller bs xs)
 
 toList : Bytes -> List Int
 toList = reverse . toList'
 
+slice : Int -> Int -> Bytes -> Bytes
+slice start end (B ptr) = unsafePerformIO (
+      B <$> foreign FFI_C "bytes_slice" (Ptr -> Int -> Int -> IO Ptr) ptr s' e'
+    )
+  where
+    n : Int
+    n = length (B ptr)
+    s : Int
+    s = (start `min` n) `max` 0
+    e : Int
+    e = (end   `min` n) `max` 0
+    s' : Int
+    s' = min s e
+    e' : Int
+    e' = max s e
+
+data Iteratee : Type -> Type where
+  Done : (acc : a) -> Iteratee a
+  More : (acc : a) -> (step : Byte -> Iteratee a) -> Iteratee a
+
+iterateR : Iteratee a -> Bytes -> a
+iterateR (Done acc) bs = acc
+iterateR (More acc step) bs with (snocView bs)
+  | Nil       = acc
+  | Snoc ys y = iterateR (step y) (assert_smaller bs ys)
+
+iterateL : Iteratee a -> Bytes -> a
+iterateL (Done acc) bs = acc
+iterateL (More acc step) bs with (consView bs)
+  | Nil       = acc
+  | Cons y ys = iterateL (step y) (assert_smaller bs ys)
+
 -- todo:
 --
--- lengthOfSpan
+-- spanLength
 -- span, break
 -- foldr, foldl
 -- various instances, Eq, Ord, Show, Monoid
