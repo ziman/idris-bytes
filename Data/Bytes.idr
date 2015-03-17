@@ -131,21 +131,32 @@ slice start end (B ptr) = unsafePerformIO (
     e' : Int
     e' = max s e
 
-data Iteratee : Type -> Type where
-  Done : (acc : a) -> Iteratee a
-  More : (acc : a) -> (step : Byte -> Iteratee a) -> Iteratee a
+-- folds with early exit
+data Result : Type -> Type where
+  Stop : (result : a) -> Result a
+  Cont : (acc : a) -> Result a
 
-iterateR : Iteratee a -> Bytes -> a
-iterateR (Done acc) bs = acc
-iterateR (More acc step) bs with (snocView bs)
+iterateR : (Byte -> a -> Result a) -> a -> Bytes -> a
+iterateR f acc bs with (snocView bs)
   | Nil       = acc
-  | Snoc ys y = iterateR (step y) (assert_smaller bs ys)
+  | Snoc ys y with (f y acc)
+    | Stop result = result
+    | Cont acc'   = iterateR f acc' (assert_smaller bs ys)
 
-iterateL : Iteratee a -> Bytes -> a
-iterateL (Done acc) bs = acc
-iterateL (More acc step) bs with (consView bs)
+iterateL : (a -> Byte -> Result a) -> a -> Bytes -> a
+iterateL f acc bs with (snocView bs)
   | Nil       = acc
-  | Cons y ys = iterateL (step y) (assert_smaller bs ys)
+  | Snoc ys y with (f acc y)
+    | Stop result = result
+    | Cont acc'   = iterateL f acc' (assert_smaller bs ys)
+
+spanLength : (Byte -> Bool) -> Bytes -> Int
+spanLength p = iterateL step 0
+  where
+    step : Int -> Byte -> Result Int
+    step n b with (p b)
+      | True  = Cont (n + 1)
+      | False = Stop  n
 
 -- todo:
 --
