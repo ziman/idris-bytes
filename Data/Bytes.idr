@@ -100,17 +100,17 @@ takePrefix n (B ptr) = unsafePerformIO (
   where
     len = length (B ptr)
 
-fromList : List Int -> Bytes
-fromList = fromList' . reverse
+pack : List Byte -> Bytes
+pack = fromList . reverse
   where
-    fromList' : List Int -> Bytes
-    fromList' []        = empty
-    fromList' (x :: xs) = snoc (fromList' xs) x
+    fromList : List Byte -> Bytes
+    fromList []        = empty
+    fromList (x :: xs) = snoc (fromList xs) x
 
-toList : Bytes -> List Int
-toList bs with (consView bs)
+unpack : Bytes -> List Int
+unpack bs with (consView bs)
   | Nil       = []
-  | Cons x xs = x :: toList (assert_smaller bs xs)
+  | Cons x xs = x :: unpack (assert_smaller bs xs)
 
 slice : Int -> Int -> Bytes -> Bytes
 slice start end (B ptr) = unsafePerformIO (
@@ -207,9 +207,7 @@ instance Monoid Bytes where
 -- todo:
 --
 -- make indices Nats
--- various instances, Eq, Ord, Show, Monoid
 -- Build a ByteString on top of Bytes?
 -- migrate to (Bits 8)?
--- rename fromList/toList to pack/unpack
 --
--- Bidirectional growth? (dirt_l, dirt_r)
+-- bidirectional growth?
