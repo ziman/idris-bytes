@@ -13,15 +13,16 @@ abstract
 record Bytes : Type where
   B : Ptr -> Bytes
 
+initialCapacity : Int
+initialCapacity = 16
+
 -- TODO: check for NULL and report errors
+
 abstract
 allocate : Int -> Bytes
 allocate capacity = unsafePerformIO (
     B <$> foreign FFI_C "bytes_alloc" (Int -> IO Ptr) capacity
   )
-
-initialCapacity : Int
-initialCapacity = 4088  -- 1 page minus bookkeeping
 
 abstract
 empty : Bytes
@@ -30,53 +31,57 @@ empty = allocate initialCapacity
 %freeze empty
 
 abstract
-cons : Byte -> Bytes -> Bytes
-cons b (B ptr) = unsafePerformIO (
-    B <$> foreign FFI_C "bytes_cons" (Int -> Ptr -> IO Ptr) b ptr
+snoc : Bytes -> Byte -> Bytes
+snoc (B ptr) b = unsafePerformIO (
+    B <$> foreign FFI_C "bytes_snoc" (Ptr -> Int -> IO Ptr) ptr b
   )
 
 %freeze cons
 
-data ConsView : Bytes -> Type where
-  Nil  : ConsView empty
-  Cons : (b : Byte) -> (bs : Bytes) -> ConsView (cons b bs)
+infixl 7 |>
+(|>) : Bytes -> Byte -> Bytes
+(|>) = snoc
+
+data SnocView : Bytes -> Type where
+  Nil  : SnocView empty
+  Snoc : (bs : Bytes) -> (b : Byte) -> SnocView (bs |> b)
 
 abstract
-consView : (bs : Bytes) -> ConsView bs
-consView (B ptr) = unsafePerformIO $ do
+snocView : (bs : Bytes) -> SnocView bs
+snocView (B ptr) = unsafePerformIO $ do
   len <- foreign FFI_C "bytes_length" (Ptr -> IO Int) ptr
   if len == 0 then
     return . believe_me $ Data.Bytes.Nil
   else do
-    hd <- foreign FFI_C "bytes_head" (Ptr -> IO Int) ptr
-    tl <- foreign FFI_C "bytes_drop" (Int -> Ptr -> IO Ptr) 1 ptr
-    return . believe_me $ Data.Bytes.Cons hd (B tl)
+    init <- foreign FFI_C "bytes_drop_suffix" (Int -> Ptr -> IO Ptr) 1 ptr
+    last <- foreign FFI_C "bytes_last" (Int -> Ptr -> IO Int) 1 ptr
+    return . believe_me $ Data.Bytes.Snoc (B init) last
 
 infixr 7 ++
 abstract
 (++) : Bytes -> Bytes -> Bytes
 (++) (B xs) (B ys) = unsafePerformIO (
-  B <$> foreign FFI_C "bytes_concat" (Ptr -> Ptr -> IO Ptr) xs ys
+  B <$> foreign FFI_C "bytes_append" (Ptr -> Ptr -> IO Ptr) xs ys
 )
 
-drop : Int -> Bytes -> Bytes
-drop n (B ptr) = unsafePerformIO (
-    B <$> foreign FFI_C "bytes_drop" (Int -> Ptr -> IO Ptr) n ptr
+dropPrefix : Int -> Bytes -> Bytes
+dropPrefix n (B ptr) = unsafePerformIO (
+    B <$> foreign FFI_C "bytes_drop_prefix" (Int -> Ptr -> IO Ptr) n ptr
   )
 
-take : Int -> Bytes -> Bytes
-take n (B ptr) = unsafePerformIO (
-    B <$> foreign FFI_C "bytes_take" (Int -> Ptr -> IO Ptr) n ptr
+takePrefix : Int -> Bytes -> Bytes
+takePrefix n (B ptr) = unsafePerformIO (
+    B <$> foreign FFI_C "bytes_take_prefix" (Int -> Ptr -> IO Ptr) n ptr
   )
 
 fromList : List Int -> Bytes
 fromList []        = empty
-fromList (x :: xs) = cons x $ fromList xs
+fromList (x :: xs) = snoc (fromList xs) x
 
 toList : Bytes -> List Int
-toList bs with (consView bs)
+toList bs with (snocView bs)
   toList  _          | Nil       = []
-  toList (cons x xs) | Cons x xs = x :: toList (assert_smaller (cons x xs) xs)
+  toList (snoc xs x) | Snoc xs x = x :: toList (assert_smaller (snoc xs x) xs)
 
 -- todo:
 --
