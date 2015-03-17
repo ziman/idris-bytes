@@ -83,14 +83,20 @@ takePrefix n (B ptr) = unsafePerformIO (
   where
     len = length (B ptr)
 
+fromList' : List Int -> Bytes
+fromList' []        = empty
+fromList' (x :: xs) = snoc (fromList' xs) x
+
 fromList : List Int -> Bytes
-fromList []        = empty
-fromList (x :: xs) = snoc (fromList xs) x
+fromList = fromList' . reverse
+
+toList' : Bytes -> List Int
+toList' bs with (snocView bs)
+  toList'  _          | Nil       = []
+  toList' (snoc xs x) | Snoc xs x = x :: toList' (assert_smaller (snoc xs x) xs)
 
 toList : Bytes -> List Int
-toList bs with (snocView bs)
-  toList  _          | Nil       = []
-  toList (snoc xs x) | Snoc xs x = x :: toList (assert_smaller (snoc xs x) xs)
+toList = reverse . toList'
 
 -- todo:
 --
