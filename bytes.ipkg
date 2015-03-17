@@ -2,4 +2,4 @@ package bytes
 
 modules = Data.Bytes
 makefile = Makefile
-objs = bytes.o
+objs = bytes.o, bytes.h
