@@ -1,6 +1,5 @@
 #include "bytes.h"
 
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -139,12 +138,12 @@ Slice * bytes_bump(size_t nbytes, Slice * slice)
 	return slice;
 }
 
-Slice * bytes_snoc(Slice * slice, unsigned byte)
+Slice * bytes_snoc(Slice * slice, uint8_t byte)
 {
 	Slice * const result = bytes_bump(1, slice);
 	if (!result) return NULL;
 
-	result->end[-1] = (uint8_t) (byte & 0xFF);
+	result->end[-1] = byte;
 
 	return result;
 }
@@ -154,18 +153,18 @@ size_t bytes_length(Slice * slice)
 	return slice->end - slice->start;
 }
 
-unsigned bytes_at(Slice * slice, size_t index)
+uint8_t bytes_at(Slice * slice, size_t index)
 {
-	return (unsigned) slice->start[index];
+	return slice->start[index];
 }
 
-unsigned bytes_head(Slice * slice)
+uint8_t bytes_head(Slice * slice)
 {
-	return (unsigned) *slice->start;
+	return *slice->start;
 }
-unsigned bytes_last(Slice * slice)
+uint8_t bytes_last(Slice * slice)
 {
-	return (unsigned) slice->end[-1];
+	return slice->end[-1];
 }
 
 Slice * bytes_slice(Slice * slice, size_t start, size_t end)

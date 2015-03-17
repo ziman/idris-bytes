@@ -6,8 +6,15 @@ module Data.Bytes
 %access public
 %default total
 
-Byte : Type
-Byte = Int
+namespace Byte
+  Byte : Type
+  Byte = Bits8
+
+  toInt : Byte -> Int
+  toInt = prim__zextB8_Int
+
+  fromInt : Int -> Byte
+  fromInt = prim__truncInt_B8
 
 abstract
 record Bytes : Type where
@@ -38,7 +45,7 @@ empty = allocate initialCapacity
 abstract
 snoc : Bytes -> Byte -> Bytes
 snoc (B ptr) b = unsafePerformIO (
-    B <$> foreign FFI_C "bytes_snoc" (Ptr -> Int -> IO Ptr) ptr b
+    B <$> foreign FFI_C "bytes_snoc" (Ptr -> Byte -> IO Ptr) ptr b
   )
 
 %freeze cons
@@ -60,7 +67,7 @@ namespace SnocView
       return $ SnocView.Nil
     else do
       init <- foreign FFI_C "bytes_drop_suffix" (Int -> Ptr -> IO Ptr) 1 ptr
-      last <- foreign FFI_C "bytes_last" (Ptr -> IO Int) ptr
+      last <- foreign FFI_C "bytes_last" (Ptr -> IO Byte) ptr
       return $ SnocView.Snoc (B init) last
 
 namespace ConsView
@@ -75,7 +82,7 @@ namespace ConsView
     if len == 0 then
       return $ ConsView.Nil
     else do
-      hd <- foreign FFI_C "bytes_head" (Ptr -> IO Int) ptr
+      hd <- foreign FFI_C "bytes_head" (Ptr -> IO Byte) ptr
       tl <- foreign FFI_C "bytes_drop_prefix" (Int -> Ptr -> IO Ptr) 1 ptr
       return $ ConsView.Cons hd (B tl)
 
@@ -107,7 +114,7 @@ pack = fromList . reverse
     fromList []        = empty
     fromList (x :: xs) = snoc (fromList xs) x
 
-unpack : Bytes -> List Int
+unpack : Bytes -> List Byte
 unpack bs with (consView bs)
   | Nil       = []
   | Cons x xs = x :: unpack (assert_smaller bs xs)
@@ -196,7 +203,7 @@ instance Ord Bytes where
       x = Bytes.cmp xs ys
 
 instance Show Bytes where
-  show = ("b" ++) . show . foldr (strCons . chr) ""
+  show = ("b" ++) . show . foldr (strCons . chr . toInt) ""
 
 instance Semigroup Bytes where
   (<+>) = (++)
