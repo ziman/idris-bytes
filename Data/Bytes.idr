@@ -19,7 +19,7 @@ namespace Byte
 abstract
 record Bytes where
   constructor B
-  B : Ptr
+  ptr : Ptr
 
 initialCapacity : Nat
 initialCapacity = 16
