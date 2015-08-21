@@ -17,8 +17,9 @@ namespace Byte
   fromInt = prim__truncInt_B8
 
 abstract
-record Bytes : Type where
-  B : Ptr -> Bytes
+record Bytes where
+  constructor B
+  B : Ptr
 
 initialCapacity : Nat
 initialCapacity = 16
