@@ -4,19 +4,15 @@ A FFI-based implementation of byte buffers for Idris.
 
 * This is a snoc-based structure (designed to grow to the right).
 
-* However, reading is unrestricted -- we provide `consView`,
-  as well as `snocView`, subslicing and arbitrary indexing, all in O(1).
+* Reading is unrestricted -- we provide `consView`, as well as `snocView`,
+  subslicing and arbitrary indexing, all in O(1).
 
 * Copying is avoided wherever possible (copy-on-second-write) --
   snocs and appends will not copy the LHS argument unless necessary.
   Instead, data is destructively written into pre-allocated spare space,
   as long as it is safe.
 
-* Reading is designed to be fast and straightforward.
-  Mutation requires accessing the bookkeeping structure and possibly reallocation.
-
-This will hopefully become the binary backend for
-[idris-text](https://github.com/ziman/text).
+This is the binary backend for [idris-text](https://github.com/ziman/text).
 
 ## Installation
 
