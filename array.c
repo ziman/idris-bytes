@@ -26,3 +26,8 @@ void array_fill(int ofs, int count, uint8_t byte, CData array)
 {
     memset(array->data + ofs, byte, count);
 }
+
+int array_compare(CData l, int lofs, CData r, int rofs, int count)
+{
+    return memcmp(l->data + lofs, r->data + rofs, count);
+}

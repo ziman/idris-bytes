@@ -24,12 +24,16 @@ minimalCapacity : Int
 minimalCapacity = 16
 
 private
+dataOfs : Int
+dataOfs = 1 * BA.bytesPerInt
+
+private
 allocate : Int -> IO Bytes
 allocate capacity = do
   arr <- BA.allocate (BA.bytesPerInt + capacity)
-  BA.pokeInt 0 bytesPerInt arr
-  BA.fill bytesPerInt capacity 0 arr  -- zero the array
-  return $ B arr bytesPerInt bytesPerInt
+  BA.pokeInt 0 dataOfs arr
+  BA.fill dataOfs capacity 0 arr  -- zero the array
+  return $ B arr dataOfs dataOfs
 
 abstract
 length : Bytes -> Int
@@ -128,52 +132,33 @@ abstract
               BA.copy (arrR, ofsR) (arrL, endL) countR
               return $ B arrL ofsL (endL + countR)
 
-{-
-dropPrefix : Nat -> Bytes -> Bytes
-dropPrefix n (B ptr) = unsafePerformIO (
-      B <$> foreign FFI_C "bytes_drop_prefix" (Int -> Ptr -> IO Ptr) (min (cast n) len) ptr
-    )
-  where
-    len = length_Int (B ptr)
+dropPrefix : Int -> Bytes -> Bytes
+dropPrefix n (B arr ofs end) = B arr (((ofs + n) `min` end) `max` dataOfs) end
 
-takePrefix : Nat -> Bytes -> Bytes
-takePrefix n (B ptr) = unsafePerformIO (
-      B <$> foreign FFI_C "bytes_take_prefix" (Int -> Ptr -> IO Ptr) (min (cast n) len) ptr
-    )
-  where
-    len = length_Int (B ptr)
+takePrefix : Int -> Bytes -> Bytes
+takePrefix n (B arr ofs end) = B arr ofs (((ofs + n) `min` end) `max` dataOfs)
 
 pack : List Byte -> Bytes
-pack = fromList . reverse
+pack = fromList empty
   where
-    fromList : List Byte -> Bytes
-    fromList []        = empty
-    fromList (x :: xs) = snoc (fromList xs) x
+    fromList : Bytes -> List Byte -> Bytes
+    fromList bs []        = bs
+    fromList bs (x :: xs) = fromList (bs `snoc` x) xs
 
 unpack : Bytes -> List Byte
 unpack bs with (consView bs)
   | Nil       = []
   | Cons x xs = x :: unpack (assert_smaller bs xs)
 
-slice : Nat -> Nat -> Bytes -> Bytes
-slice start end (B ptr) = unsafePerformIO (
-      B <$> foreign FFI_C "bytes_slice" (Ptr -> Int -> Int -> IO Ptr) ptr s' e'
-    )
-  where
-    n : Int
-    n = length_Int (B ptr)
-    s : Int
-    s = (cast start `min` n) `max` 0
-    e : Int
-    e = (cast end   `min` n) `max` 0
-    s' : Int
-    s' = min s e
-    e' : Int
-    e' = max s e
+slice : Int -> Int -> Bytes -> Bytes
+slice ofs' end' (B arr ofs end)
+  = B arr
+        (((ofs + ofs') `min` end) `max` dataOfs)
+        (((ofs + end') `min` end) `max` dataOfs)
 
 -- Folds with early exit.
 -- If Bytes were a Functor, this would be equivalent
--- to a Traversable instance interpreted in the Either monad.
+-- to a Traversable implementation interpreted in the Either monad.
 data Result : Type -> Type where
   Stop : (result : a) -> Result a
   Cont : (acc : a) -> Result a
@@ -193,6 +178,7 @@ iterateL f acc bs with (consView bs)
     | Cont acc'   = iterateL f acc' (assert_smaller bs ys)
 
 infixl 3 .:
+private
 (.:) : (a -> b) -> (c -> d -> a) -> (c -> d -> b)
 (.:) g f x y = g (f x y)
 
@@ -202,15 +188,15 @@ foldr f = iterateR (Cont .: f)
 foldl : (a -> Byte -> a) -> a -> Bytes -> a
 foldl f = iterateL (Cont .: f)
 
-spanLength : (Byte -> Bool) -> Bytes -> Nat
-spanLength p = iterateL step Z
+spanLength : (Byte -> Bool) -> Bytes -> Int
+spanLength p = iterateL step 0
   where
-    step : Nat -> Byte -> Result Nat
+    step : Int -> Byte -> Result Int
     step n b with (p b)
-      | True  = Cont (S n)
+      | True  = Cont (1 + n)
       | False = Stop n
 
-splitAt : Nat -> Bytes -> (Bytes, Bytes)
+splitAt : Int -> Bytes -> (Bytes, Bytes)
 splitAt n bs = (takePrefix n bs, dropPrefix n bs)
 
 span : (Byte -> Bool) -> Bytes -> (Bytes, Bytes)
@@ -220,23 +206,26 @@ break : (Byte -> Bool) -> Bytes -> (Bytes, Bytes)
 break p bs = span (not . p) bs
 
 private
-cmp : Bytes -> Bytes -> Int
-cmp (B xs) (B ys) = unsafePerformIO $
-  foreign FFI_C "bytes_compare" (Ptr -> Ptr -> IO Int) xs ys
+cmp : Bytes -> Bytes -> Ordering
+cmp (B arrL ofsL endL) (B arrR ofsR endR) = unsafePerformIO $ do
+    let countL = endL - ofsL
+    let countR = endR - ofsR
+    let commonCount = countL `min` countR
+    result <- BA.compare (arrL, ofsL) (arrR, ofsR) commonCount
+    return $
+      if result /= 0
+        then i2o result
+        else compare countL countR
+  where
+    i2o : Int -> Ordering
+    i2o 0 = EQ
+    i2o i = if i < 0 then LT else GT
 
-instance Eq Bytes where
-  xs == ys = (Bytes.cmp xs ys == 0)
+implementation Eq Bytes where
+  xs == ys = (Bytes.cmp xs ys == EQ)
 
-instance Ord Bytes where
-  compare xs ys =
-      if x < 0
-        then LT
-        else if x > 0
-          then GT
-          else EQ
-    where
-      x : Int
-      x = Bytes.cmp xs ys
+implementation Ord Bytes where
+  compare = Bytes.cmp
 
 toString : Bytes -> String
 toString = foldr (strCons . chr . toInt) ""
@@ -244,13 +233,13 @@ toString = foldr (strCons . chr . toInt) ""
 fromString : String -> Bytes
 fromString = foldl (\bs, c => bs |> fromInt (ord c)) empty . unpack
 
-instance Show Bytes where
+implementation Show Bytes where
   show = ("b" ++) . show . toString
 
-instance Semigroup Bytes where
+implementation Semigroup Bytes where
   (<+>) = (++)
 
-instance Monoid Bytes where
+implementation Monoid Bytes where
   neutral = empty
 
 -- todo:
@@ -260,4 +249,3 @@ instance Monoid Bytes where
 -- migrate to (Bits 8)?
 --
 -- bidirectional growth?
--}

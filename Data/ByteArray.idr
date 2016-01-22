@@ -43,7 +43,7 @@ peek ofs (BA ptr sz)
 abstract
 peekInt : Int -> ByteArray -> IO Int
 peekInt ofs (BA ptr sz)
-  = if (ofs < 0 || ofs+bytesPerInt >= sz)
+  = if (ofs < 0 || ofs+bytesPerInt > sz)
       then return 0
       else foreign FFI_C "array_peek_int" (Int -> CData -> IO Int) ofs ptr
 
@@ -57,24 +57,31 @@ poke ofs b (BA ptr sz)
 abstract
 pokeInt : Int -> Int -> ByteArray -> IO ()
 pokeInt ofs i (BA ptr sz)
-  = if (ofs < 0 || ofs >= sz)
+  = if (ofs < 0 || ofs+bytesPerInt > sz)
       then return ()
       else foreign FFI_C "array_poke_int" (Int -> Int -> CData -> IO ()) ofs i ptr
 
 abstract
 copy : (ByteArray, Int) -> (ByteArray, Int) -> Int -> IO ()
 copy (BA srcPtr srcSz, srcIx) (BA dstPtr dstSz, dstIx) count
-  = if (srcIx < 0 || dstIx < 0 || (srcIx+count) >= srcSz || (dstIx+count) >= dstSz)
+  = if (srcIx < 0 || dstIx < 0 || (srcIx+count) > srcSz || (dstIx+count) > dstSz)
       then return ()
       else foreign FFI_C "array_copy" (CData -> Int -> CData -> Int -> Int -> IO ()) srcPtr srcIx dstPtr dstIx count
 
 abstract
 fill : Int -> Int -> Byte -> ByteArray -> IO ()
 fill ofs count b (BA ptr sz)
-  = if (ofs < 0 || ofs+count >= sz)
+  = if (ofs < 0 || ofs+count > sz)
       then return ()
       else foreign FFI_C "array_fill" (Int -> Int -> Byte -> CData -> IO ()) ofs count b ptr
 
 abstract
 size : ByteArray -> Int
 size (BA ptr sz) = sz
+
+abstract
+compare : (ByteArray, Int) -> (ByteArray, Int) -> Int -> IO Int
+compare (BA ptrL szL, ofsL) (BA ptrR szR, ofsR) count
+  = if (ofsL < 0 || ofsL+count > szL || ofsR < 0 || ofsR+count > szR)
+      then return 0
+      else foreign FFI_C "array_compare" (CData -> Int -> CData -> Int -> Int -> IO Int) ptrL ofsL ptrR ofsR count
