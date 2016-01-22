@@ -12,11 +12,13 @@ A FFI-based implementation of byte buffers for Idris.
   Instead, data is destructively written into pre-allocated spare space,
   as long as it is safe.
 
+* Built on top of `Data.ByteArray`, `IO`-based mutable byte arrays.
+
 This is the binary backend for [idris-text](https://github.com/ziman/text).
 
 ## Installation
 
 ```bash
-$ idris --build buffer.ipkg
-$ idris --install buffer.ipkg
+$ idris --build bytes.ipkg
+$ idris --install bytes.ipkg
 ```
