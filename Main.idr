@@ -16,6 +16,8 @@ multi (S n) bs = multi n bs ++ bs
 testBytes : IO ()
 testBytes = do
     putStrLn "Hello world!"
+    printLn . B.unpack $ xs
+    printLn . B.unpack $ ys
     printLn . B.unpack $ xs ++ ys
     printLn . B.unpack $ multi 10 xs
     printLn $ (xs ++ ys) == B.pack [1,2,3,254,255,0,1]

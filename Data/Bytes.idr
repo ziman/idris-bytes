@@ -73,7 +73,7 @@ snoc bs@(B arr ofs end) byte
               return $ snoc copy byte
             else do  -- can mutate
               BA.pokeInt 0 (end+1) arr
-              BA.poke (end+1) byte arr
+              BA.poke end byte arr
               return $ B arr ofs (end+1)
 
 infixl 7 |>
