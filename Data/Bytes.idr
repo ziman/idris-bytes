@@ -1,50 +1,79 @@
 module Data.Bytes
 
+import Data.ByteArray as BA
+
 %include C "bytes.h"
 %link C "bytes.o"
 
 %access public
 %default total
 
-{-
+-- Structure of the allocated ByteArray
+--   [used_size][.....data.....]
+-- used_size is an int and it takes up BA.bytesPerInt bytes
+-- at the beginning of the array
+
 abstract
 record Bytes where
   constructor B
-  ptr : Ptr
+  arr : ByteArray
+  ofs : Int
+  end : Int  -- first offset not included in the array
 
-initialCapacity : Nat
-initialCapacity = 16
-
--- TODO: check for NULL and report errors
-
-abstract
-allocate : Nat -> Bytes
-allocate capacity = unsafePerformIO (
-    B <$> foreign FFI_C "bytes_alloc" (Int -> IO Ptr) (cast capacity)
-  )
+minimalCapacity : Int
+minimalCapacity = 16
 
 private
-length_Int : Bytes -> Int
-length_Int (B ptr) = unsafePerformIO $
-  foreign FFI_C "bytes_length" (Ptr -> IO Int) ptr
+allocate : Int -> IO Bytes
+allocate capacity = do
+  arr <- BA.allocate (BA.bytesPerInt + capacity)
+  BA.pokeInt 0 bytesPerInt arr
+  BA.fill bytesPerInt capacity 0 arr  -- zero the array
+  return $ B arr bytesPerInt bytesPerInt
 
 abstract
-length : Bytes -> Nat
-length = cast . length_Int
+length : Bytes -> Int
+length (B arr ofs end) = end - ofs
 
 abstract
 empty : Bytes
-empty = allocate initialCapacity
+empty = unsafePerformIO $ allocate minimalCapacity
 
 %freeze empty
 
+-- factor=1 ~ copy
+-- factor=2 ~ grow
+private
+grow : Int -> Bytes -> IO Bytes
+grow factor (B arr ofs end) = do
+  maxUsed <- BA.peekInt 0 arr
+  let bytesUsed = end - ofs
+  let bytesAvailable =
+        if maxUsed > end
+          then bytesUsed
+          else BA.size arr - ofs
+  B arr' ofs' end' <- allocate $ (factor*bytesAvailable) `max` minimalCapacity
+  BA.copy (arr, ofs) (arr', ofs') bytesUsed
+  return $ B arr' ofs' (ofs' + bytesUsed)
+
+%assert_total
 abstract
 snoc : Bytes -> Byte -> Bytes
-snoc (B ptr) b = unsafePerformIO (
-    B <$> foreign FFI_C "bytes_snoc" (Ptr -> Byte -> IO Ptr) ptr b
-  )
-
-%freeze cons
+snoc bs@(B arr ofs end) byte
+    = if end >= BA.size arr
+        then unsafePerformIO $ do  -- need more space
+          grown <- grow 2 bs
+          return $ snoc grown byte
+        else unsafePerformIO $ do
+          maxUsed <- BA.peekInt 0 arr
+          if maxUsed > end
+            then do  -- someone already took the headroom, need copying
+              copy <- grow 2 bs
+              return $ snoc copy byte
+            else do  -- can mutate
+              BA.pokeInt 0 (end+1) arr
+              BA.poke (end+1) byte arr
+              return $ B arr ofs (end+1)
 
 infixl 7 |>
 (|>) : Bytes -> Byte -> Bytes
@@ -57,14 +86,12 @@ namespace SnocView
 
   abstract
   snocView : Bytes -> SnocView
-  snocView (B ptr) = unsafePerformIO $ do
-    len <- foreign FFI_C "bytes_length" (Ptr -> IO Int) ptr
-    if len == 0 then
-      return $ SnocView.Nil
-    else do
-      init <- foreign FFI_C "bytes_drop_suffix" (Int -> Ptr -> IO Ptr) 1 ptr
-      last <- foreign FFI_C "bytes_last" (Ptr -> IO Byte) ptr
-      return $ SnocView.Snoc (B init) last
+  snocView (B arr ofs end) =
+    if end == ofs
+      then SnocView.Nil
+      else unsafePerformIO $ do
+        last <- BA.peek (end-1) arr
+        return $ SnocView.Snoc (B arr ofs (end-1)) last
 
 namespace ConsView
   data ConsView : Type where
@@ -73,22 +100,35 @@ namespace ConsView
 
   abstract
   consView : Bytes -> ConsView
-  consView (B ptr) = unsafePerformIO $ do
-    len <- foreign FFI_C "bytes_length" (Ptr -> IO Int) ptr
-    if len == 0 then
-      return $ ConsView.Nil
-    else do
-      hd <- foreign FFI_C "bytes_head" (Ptr -> IO Byte) ptr
-      tl <- foreign FFI_C "bytes_drop_prefix" (Int -> Ptr -> IO Ptr) 1 ptr
-      return $ ConsView.Cons hd (B tl)
+  consView (B arr ofs end) =
+    if end == ofs
+      then ConsView.Nil
+      else unsafePerformIO $ do
+        first <- BA.peek ofs arr
+        return $ ConsView.Cons first (B arr (ofs+1) end)
 
 infixr 7 ++
+%assert_total
 abstract
 (++) : Bytes -> Bytes -> Bytes
-(++) (B xs) (B ys) = unsafePerformIO (
-  B <$> foreign FFI_C "bytes_append" (Ptr -> Ptr -> IO Ptr) xs ys
-)
+(++) bsL@(B arrL ofsL endL) bsR@(B arrR ofsR endR)
+  = let countR = endR - ofsR in
+      if endL + countR > BA.size arrL
+        then unsafePerformIO $ do  -- need more space
+          grown <- grow 2 bsL
+          return $ grown ++ bsR
+        else unsafePerformIO $ do
+          maxUsedL <- BA.peekInt 0 arrL
+          if maxUsedL > endL
+            then do  -- headroom taken
+              copyL <- grow 2 bsL
+              return $ copyL ++ bsR
+            else do  -- can mutate
+              BA.pokeInt 0 (endL + countR) arrL
+              BA.copy (arrR, ofsR) (arrL, endL) countR
+              return $ B arrL ofsL (endL + countR)
 
+{-
 dropPrefix : Nat -> Bytes -> Bytes
 dropPrefix n (B ptr) = unsafePerformIO (
       B <$> foreign FFI_C "bytes_drop_prefix" (Int -> Ptr -> IO Ptr) (min (cast n) len) ptr

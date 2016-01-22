@@ -6,6 +6,9 @@
 #include "idris_rts.h"
 
 CData array_alloc(int size);
-uint8_t array_peek(int ix, CData array);
-void array_poke(int ix, uint8_t byte, CData array);
-void array_copy(CData src, int src_ix, CData dst, int dst_ix, int count);
+uint8_t array_peek(int ofs, CData array);
+int array_peek_int(int ofs, CData array);
+void array_poke(int ofs, uint8_t byte, CData array);
+void array_poke_int(int ofs, int i, CData array);
+void array_copy(CData src, int src_ofs, CData dst, int dst_ofs, int count);
+void array_fill(int ofs, int count, uint8_t byte, CData array);
