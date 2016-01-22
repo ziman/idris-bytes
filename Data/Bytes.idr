@@ -2,9 +2,6 @@ module Data.Bytes
 
 import Data.ByteArray as BA
 
-%include C "bytes.h"
-%link C "bytes.o"
-
 %access public
 %default total
 

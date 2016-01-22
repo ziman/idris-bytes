@@ -16,6 +16,16 @@ void array_poke(int ofs, uint8_t byte, CData array)
     ((uint8_t *) array->data)[ofs] = byte;
 }
 
+int array_peek_int(int ofs, CData array)
+{
+    return *((int *) (array->data + ofs));
+}
+
+void array_poke_int(int ofs, int val, CData array)
+{
+    *((int *) (array->data + ofs)) = val;
+}
+
 void array_copy(CData src, int src_ofs, CData dst, int dst_ofs, int count)
 {
     // memmove rather than memcpy in case the areas overlap
