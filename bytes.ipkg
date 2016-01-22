@@ -1,5 +1,5 @@
 package bytes
 
-modules = Data.Bytes
+modules = Data.Bytes, Data.ByteArray
 makefile = Makefile
-objs = bytes.o, bytes.h
+objs = bytes.o, bytes.h, array.o, array.h

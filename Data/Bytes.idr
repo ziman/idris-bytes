@@ -6,16 +6,7 @@ module Data.Bytes
 %access public
 %default total
 
-namespace Byte
-  Byte : Type
-  Byte = Bits8
-
-  toInt : Byte -> Int
-  toInt = prim__zextB8_Int
-
-  fromInt : Int -> Byte
-  fromInt = prim__truncInt_B8
-
+{-
 abstract
 record Bytes where
   constructor B
@@ -229,3 +220,4 @@ instance Monoid Bytes where
 -- migrate to (Bits 8)?
 --
 -- bidirectional growth?
+-}
