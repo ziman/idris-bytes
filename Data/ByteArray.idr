@@ -34,6 +34,11 @@ allocate sz = do
   return $ BA ptr sz
 
 abstract
+reallocate : Int -> ByteArray -> IO ()
+reallocate newSz (BA ptr sz)
+  = foreign FFI_C "array_realloc" (Int -> CData -> IO ()) sz ptr
+
+abstract
 peek : Int -> ByteArray -> IO Byte
 peek ofs (BA ptr sz)
   = if (ofs < 0 || ofs >= sz)

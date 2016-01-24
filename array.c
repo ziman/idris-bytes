@@ -1,6 +1,11 @@
 #include "array.h"
 #include <string.h>
 
+void array_realloc(int size, CData array)
+{
+    array->data = realloc(array->data, (size_t) size);
+}
+
 CData array_alloc(int size)
 {
     return cdata_allocate((size_t) size, free);
