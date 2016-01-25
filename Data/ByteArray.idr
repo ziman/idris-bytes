@@ -90,3 +90,11 @@ compare (BA ptrL szL, ofsL) (BA ptrR szR, ofsR) count
   = if (ofsL < 0 || ofsL+count > szL || ofsR < 0 || ofsR+count > szR)
       then return 0
       else foreign FFI_C "array_compare" (CData -> Int -> CData -> Int -> Int -> IO Int) ptrL ofsL ptrR ofsR count
+
+abstract
+find : Byte -> ByteArray -> Int -> Int -> IO (Maybe Int)
+find b (BA ptr sz) ofs end = do
+  ofs <- foreign FFI_C "array_find" (Byte -> CData -> Int -> Int -> IO Int) b ptr ofs end
+  if ofs < 0
+    then return $ Nothing
+    else return $ Just ofs

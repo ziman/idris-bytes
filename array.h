@@ -14,3 +14,4 @@ void array_poke_int(int ofs, int i, CData array);
 void array_copy(CData src, int src_ofs, CData dst, int dst_ofs, int count);
 void array_fill(int ofs, int count, uint8_t byte, CData array);
 int array_compare(CData l, int lofs, CData r, int rofs, int count);
+int array_find(uint8_t byte, CData array, int ofs, int end);

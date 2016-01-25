@@ -1,6 +1,20 @@
 #include "array.h"
 #include <string.h>
 
+int array_find(uint8_t byte, CData array, int ofs, int end)
+{
+    void * data = array->data + ofs;
+    void * result = memchr(data, (int) byte, (size_t) (end - ofs));
+    if (result == NULL)
+    {
+        return -1;
+    }
+    else
+    {
+        return (result - data);
+    }
+}
+
 void array_realloc(int size, CData array)
 {
     array->data = realloc(array->data, (size_t) size);

@@ -40,6 +40,10 @@ abstract
 empty : Bytes
 empty = unsafePerformIO $ allocate minimalCapacity
 
+abstract
+null : Bytes -> Bool
+null (B arr ofs end) = (ofs == end)
+
 %freeze empty
 
 -- factor=1 ~ copy
@@ -193,8 +197,24 @@ spanLength p = iterateL step 0
       | True  = Cont (1 + n)
       | False = Stop n
 
+find : Byte -> Bytes -> Maybe Int
+find b (B arr ofs end) = unsafePerformIO $ BA.find b arr ofs end
+
 splitAt : Int -> Bytes -> (Bytes, Bytes)
 splitAt n bs = (takePrefix n bs, dropPrefix n bs)
+
+splitOn : Byte -> Bytes -> (Bytes, Bytes)
+splitOn b bs with (find b bs)
+  | Nothing  = (bs, empty)
+  | Just ofs = (takePrefix ofs bs, dropPrefix (ofs+1) bs)
+
+splitsOn : Byte -> Bytes -> List Bytes
+splitsOn b bs with (find b bs)
+  | Nothing  = [bs]
+  | Just ofs = takePrefix ofs bs :: splitsOn b (assert_smaller bs $ dropPrefix (ofs+1) bs)
+
+asciiLines : Bytes -> List Bytes
+asciiLines = splitsOn 0x0A
 
 span : (Byte -> Bool) -> Bytes -> (Bytes, Bytes)
 span p bs = splitAt (spanLength p bs) bs
