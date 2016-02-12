@@ -2,7 +2,7 @@ module Data.Bytes
 
 import Data.ByteArray as BA
 
-%access public
+%access export
 %default total
 
 -- Structure of the allocated ByteArray
@@ -10,13 +10,13 @@ import Data.ByteArray as BA
 -- used_size is an int and it takes up BA.bytesPerInt bytes
 -- at the beginning of the array
 
-abstract
 record Bytes where
   constructor B
   arr : ByteArray
   ofs : Int
   end : Int  -- first offset not included in the array
 
+private
 minimalCapacity : Int
 minimalCapacity = 16
 
@@ -32,15 +32,12 @@ allocate capacity = do
   BA.fill dataOfs capacity 0 arr  -- zero the array
   return $ B arr dataOfs dataOfs
 
-abstract
 length : Bytes -> Int
 length (B arr ofs end) = end - ofs
 
-abstract
 empty : Bytes
 empty = unsafePerformIO $ allocate minimalCapacity
 
-abstract
 null : Bytes -> Bool
 null (B arr ofs end) = (ofs == end)
 
@@ -62,7 +59,6 @@ grow factor (B arr ofs end) = do
   return $ B arr' ofs' (ofs' + bytesUsed)
 
 %assert_total
-abstract
 snoc : Bytes -> Byte -> Bytes
 snoc bs@(B arr ofs end) byte
     = if end >= BA.size arr
@@ -85,11 +81,11 @@ infixl 7 |>
 (|>) = snoc
 
 namespace SnocView
+  public export
   data SnocView : Type where
     Nil : SnocView
     Snoc : (bs : Bytes) -> (b : Byte) -> SnocView
 
-  abstract
   snocView : Bytes -> SnocView
   snocView (B arr ofs end) =
     if end == ofs
@@ -99,11 +95,11 @@ namespace SnocView
         return $ SnocView.Snoc (B arr ofs (end-1)) last
 
 namespace ConsView
+  public export
   data ConsView : Type where
     Nil : ConsView
     Cons : (b : Byte) -> (bs : Bytes) -> ConsView
 
-  abstract
   consView : Bytes -> ConsView
   consView (B arr ofs end) =
     if end == ofs
@@ -114,7 +110,6 @@ namespace ConsView
 
 infixr 7 ++
 %assert_total
-abstract
 (++) : Bytes -> Bytes -> Bytes
 (++) bsL@(B arrL ofsL endL) bsR@(B arrR ofsR endR)
   = let countR = endR - ofsR in
@@ -160,6 +155,7 @@ slice ofs' end' (B arr ofs end)
 -- Folds with early exit.
 -- If Bytes were a Functor, this would be equivalent
 -- to a Traversable implementation interpreted in the Either monad.
+public export
 data Result : Type -> Type where
   Stop : (result : a) -> Result a
   Cont : (acc : a) -> Result a
