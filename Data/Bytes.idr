@@ -30,10 +30,10 @@ allocate capacity = do
   arr <- BA.allocate (BA.bytesPerInt + capacity)
   BA.pokeInt 0 dataOfs arr
   BA.fill dataOfs capacity 0 arr  -- zero the array
-  return $ B arr dataOfs dataOfs
+  pure $ B arr dataOfs dataOfs
 
-length : Bytes -> Int
-length (B arr ofs end) = end - ofs
+length : Bytes -> Nat
+length (B arr ofs end) = cast $ end - ofs
 
 empty : Bytes
 empty = unsafePerformIO $ allocate minimalCapacity
@@ -56,7 +56,7 @@ grow factor (B arr ofs end) = do
           else BA.size arr - ofs
   B arr' ofs' end' <- allocate $ (factor*bytesAvailable) `max` minimalCapacity
   BA.copy (arr, ofs) (arr', ofs') bytesUsed
-  return $ B arr' ofs' (ofs' + bytesUsed)
+  pure $ B arr' ofs' (ofs' + bytesUsed)
 
 %assert_total
 snoc : Bytes -> Byte -> Bytes
@@ -64,17 +64,17 @@ snoc bs@(B arr ofs end) byte
     = if end >= BA.size arr
         then unsafePerformIO $ do  -- need more space
           grown <- grow 2 bs
-          return $ snoc grown byte
+          pure $ snoc grown byte
         else unsafePerformIO $ do
           maxUsed <- BA.peekInt 0 arr
           if maxUsed > end
             then do  -- someone already took the headroom, need copying
               copy <- grow 2 bs
-              return $ snoc copy byte
+              pure $ snoc copy byte
             else do  -- can mutate
               BA.pokeInt 0 (end+1) arr
               BA.poke end byte arr
-              return $ B arr ofs (end+1)
+              pure $ B arr ofs (end+1)
 
 infixl 7 |>
 (|>) : Bytes -> Byte -> Bytes
@@ -92,7 +92,7 @@ namespace SnocView
       then SnocView.Nil
       else unsafePerformIO $ do
         last <- BA.peek (end-1) arr
-        return $ SnocView.Snoc (B arr ofs (end-1)) last
+        pure $ SnocView.Snoc (B arr ofs (end-1)) last
 
 namespace ConsView
   public export
@@ -106,7 +106,7 @@ namespace ConsView
       then ConsView.Nil
       else unsafePerformIO $ do
         first <- BA.peek ofs arr
-        return $ ConsView.Cons first (B arr (ofs+1) end)
+        pure $ ConsView.Cons first (B arr (ofs+1) end)
 
 infixr 7 ++
 %assert_total
@@ -116,17 +116,17 @@ infixr 7 ++
       if endL + countR > BA.size arrL
         then unsafePerformIO $ do  -- need more space
           grown <- grow 2 bsL
-          return $ grown ++ bsR
+          pure $ grown ++ bsR
         else unsafePerformIO $ do
           maxUsedL <- BA.peekInt 0 arrL
           if maxUsedL > endL
             then do  -- headroom taken
               copyL <- grow 2 bsL
-              return $ copyL ++ bsR
+              pure $ copyL ++ bsR
             else do  -- can mutate
               BA.pokeInt 0 (endL + countR) arrL
               BA.copy (arrR, ofsR) (arrL, endL) countR
-              return $ B arrL ofsL (endL + countR)
+              pure $ B arrL ofsL (endL + countR)
 
 dropPrefix : Int -> Bytes -> Bytes
 dropPrefix n (B arr ofs end) = B arr (((ofs + n) `min` end) `max` dataOfs) end
@@ -225,7 +225,7 @@ cmp (B arrL ofsL endL) (B arrR ofsR endR) = unsafePerformIO $ do
     let countR = endR - ofsR
     let commonCount = countL `min` countR
     result <- BA.compare (arrL, ofsL) (arrR, ofsR) commonCount
-    return $
+    pure $
       if result /= 0
         then i2o result
         else compare countL countR
