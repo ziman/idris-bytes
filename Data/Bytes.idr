@@ -58,19 +58,18 @@ grow factor (B arr ofs end) = do
   BA.copy (arr, ofs) (arr', ofs') bytesUsed
   pure $ B arr' ofs' (ofs' + bytesUsed)
 
-%assert_total
 snoc : Bytes -> Byte -> Bytes
 snoc bs@(B arr ofs end) byte
     = if end >= BA.size arr
         then unsafePerformIO $ do  -- need more space
           grown <- grow 2 bs
-          pure $ snoc grown byte
+          pure $ assert_total $ snoc grown byte
         else unsafePerformIO $ do
           maxUsed <- BA.peekInt 0 arr
           if maxUsed > end
             then do  -- someone already took the headroom, need copying
               copy <- grow 2 bs
-              pure $ snoc copy byte
+              pure $ assert_total $ snoc copy byte
             else do  -- can mutate
               BA.pokeInt 0 (end+1) arr
               BA.poke end byte arr
@@ -109,20 +108,19 @@ namespace ConsView
         pure $ ConsView.Cons first (B arr (ofs+1) end)
 
 infixr 7 ++
-%assert_total
 (++) : Bytes -> Bytes -> Bytes
 (++) bsL@(B arrL ofsL endL) bsR@(B arrR ofsR endR)
   = let countR = endR - ofsR in
       if endL + countR > BA.size arrL
         then unsafePerformIO $ do  -- need more space
           grown <- grow 2 bsL
-          pure $ grown ++ bsR
+          pure $ assert_total $ grown ++ bsR
         else unsafePerformIO $ do
           maxUsedL <- BA.peekInt 0 arrL
           if maxUsedL > endL
             then do  -- headroom taken
               copyL <- grow 2 bsL
-              pure $ copyL ++ bsR
+              pure $ assert_total $ copyL ++ bsR
             else do  -- can mutate
               BA.pokeInt 0 (endL + countR) arrL
               BA.copy (arrR, ofsR) (arrL, endL) countR
