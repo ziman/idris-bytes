@@ -1,0 +1,13 @@
+[package]
+name = "ziman/idris-bytes"
+version = "0.1.0"
+authors = []
+
+[dependencies]
+
+[targets.lib]
+mods = [ "Data.Bytes", "Data.ByteArray"]
+path = "."
+
+[scripts]
+"prebuild" = "cc -O2 -c -o array.o array.c `idris --include`"
